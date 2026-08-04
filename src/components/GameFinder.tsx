@@ -25,7 +25,7 @@ export function GameFinder() {
     event.preventDefault(); setLoading(true); setError(""); setHasSearched(true);
     try {
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
-      const response = await fetch(`${apiBaseUrl}/api/search`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt, ...filters, limit: 12 }) });
+      const response = await fetch(`${apiBaseUrl}/api/search`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt, ...filters, limit: 20 }) });
       if (!response.ok) {
         const failure = await response.json().catch(() => null) as { detail?: string } | null;
         throw new Error(failure?.detail ?? "The recommendation service is unavailable.");
