@@ -6,7 +6,7 @@ export const maxDuration = 30;
 type Tier = "Integrated" | "Entry" | "Mid-range" | "High-end";
 type SearchBody = { prompt?: string; os?: string; ram_gb?: string; cpu_tier?: string; gpu_tier?: string; storage_gb?: string; genre?: string; price?: string; limit?: number };
 type SteamSearchItem = { id: number; type: string | number };
-type SteamDetails = { type?: string; name?: string; is_free?: boolean; short_description?: string; detailed_description?: string; header_image?: string; pc_requirements?: { minimum?: string }; platforms?: { windows?: boolean; mac?: boolean; linux?: boolean }; genres?: { description: string }[]; categories?: { description: string }[]; recommendations?: { total?: number } };
+type SteamDetails = { type?: string; name?: string; required_age?: string | number; is_free?: boolean; short_description?: string; detailed_description?: string; header_image?: string; pc_requirements?: { minimum?: string }; platforms?: { windows?: boolean; mac?: boolean; linux?: boolean }; genres?: { description: string }[]; categories?: { description: string }[]; recommendations?: { total?: number } };
 type SteamSpy = { positive?: number; owners?: string; tags?: Record<string, number> };
 type Game = { app_id: number; title: string; genres: string[]; positive_reviews: number; estimated_owners: number; free_to_play: boolean; steam_url: string; description: string; header_image: string; requirements: { os: string; ram_gb: number; cpu_tier: Tier; gpu_tier: Tier; storage_gb: number }; match_score: number };
 
@@ -70,13 +70,13 @@ async function candidateIds(prompt: string) {
 async function loadGame(appId: number, queryVector: Float32Array): Promise<Game | null> {
   const [detailsResponse, steamSpy] = await Promise.all([getJson<Record<string, { success: boolean; data?: SteamDetails }>>(`https://store.steampowered.com/api/appdetails?appids=${appId}&cc=us&l=en`), getJson<SteamSpy>(`https://steamspy.com/api.php?request=appdetails&appid=${appId}`)]);
   const details = detailsResponse?.[String(appId)]?.data;
-  if (!details || details.type !== "game" || !details.name) return null;
+  if (!details || details.type !== "game" || !details.name || Number(details.required_age) >= 18) return null;
   const requirementsText = cleanText(details.pc_requirements?.minimum);
   const genres = [...(details.genres ?? []).map((genre) => genre.description), ...(details.categories ?? []).map((category) => category.description), ...Object.keys(steamSpy?.tags ?? {}).slice(0, 12)].filter((value, index, values) => values.indexOf(value) === index);
   const description = cleanText(details.detailed_description || details.short_description).slice(0, 1400);
   const os = [details.platforms?.windows && "Windows", details.platforms?.mac && "macOS", details.platforms?.linux && "Linux"].filter(Boolean).join(" ") || "Windows";
   const owners = Number((steamSpy?.owners ?? "0").split("..")[0].replace(/[^0-9]/g, ""));
-  return { app_id: appId, title: details.name, genres, positive_reviews: steamSpy?.positive ?? details.recommendations?.total ?? 0, estimated_owners: Number.isFinite(owners) ? owners : 0, free_to_play: Boolean(details.is_free), steam_url: `https://store.steampowered.com/app/${appId}/`, description, header_image: details.header_image ?? "", requirements: { os, ram_gb: requirementNumber(requirementsText, "memory", 8), cpu_tier: hardwareTier(requirementsText, "cpu"), gpu_tier: hardwareTier(requirementsText, "gpu"), storage_gb: requirementNumber(requirementsText, "storage", 30) }, match_score: cosineSimilarity(queryVector, embedding(`${details.name} ${description} ${genres.join(" ")}`)) };
+  return { app_id: appId, title: details.name, genres, positive_reviews: steamSpy?.positive || details.recommendations?.total || 0, estimated_owners: Number.isFinite(owners) ? owners : 0, free_to_play: Boolean(details.is_free), steam_url: `https://store.steampowered.com/app/${appId}/`, description, header_image: details.header_image ?? "", requirements: { os, ram_gb: requirementNumber(requirementsText, "memory", 8), cpu_tier: hardwareTier(requirementsText, "cpu"), gpu_tier: hardwareTier(requirementsText, "gpu"), storage_gb: requirementNumber(requirementsText, "storage", 30) }, match_score: cosineSimilarity(queryVector, embedding(`${details.name} ${description} ${genres.join(" ")}`)) };
 }
 
 function compatible(game: Game, query: Required<Omit<SearchBody, "limit">>) {
