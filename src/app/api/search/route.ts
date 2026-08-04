@@ -18,16 +18,25 @@ type SearchBody = {
 };
 
 const tiers: Record<Tier, number> = { Integrated: 0, Entry: 1, "Mid-range": 2, "High-end": 3 };
+const ignoredPromptWords = new Set(["a", "an", "and", "best", "can", "find", "for", "game", "games", "give", "i", "me", "my", "of", "please", "recommend", "recommendation", "show", "suggest", "the", "to", "want", "with"]);
 
 function numberFromChoice(value: string | undefined) {
   const match = value?.match(/\d+/);
   return match ? Number(match[0]) : undefined;
 }
 
+function normalizeWord(word: string) {
+  if (word.endsWith("ies") && word.length > 4) return `${word.slice(0, -3)}y`;
+  if (word.endsWith("ing") && word.length > 5) return word.slice(0, -3);
+  if (word.endsWith("es") && word.length > 4) return word.slice(0, -2);
+  if (word.endsWith("s") && word.length > 3) return word.slice(0, -1);
+  return word;
+}
+
 function score(game: Game, prompt: string) {
-  const words = new Set((prompt.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((word) => word.length > 2));
-  const text = `${game.title} ${game.description} ${game.genres.join(" ")}`.toLowerCase();
-  return [...words].filter((word) => text.includes(word)).length / Math.max(1, words.size);
+  const words = new Set((prompt.toLowerCase().match(/[a-z0-9]+/g) ?? []).map(normalizeWord).filter((word) => word.length > 2 && !ignoredPromptWords.has(word)));
+  const gameWords = new Set((`${game.title} ${game.description} ${game.genres.join(" ")}`.toLowerCase().match(/[a-z0-9]+/g) ?? []).map(normalizeWord));
+  return [...words].filter((word) => gameWords.has(word)).length / Math.max(1, words.size);
 }
 
 function compatible(game: Game, query: Required<Omit<SearchBody, "limit">>) {
