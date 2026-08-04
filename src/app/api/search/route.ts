@@ -45,7 +45,12 @@ function compatible(game: Game, query: Required<Omit<SearchBody, "limit">>) {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as SearchBody;
+  let body: SearchBody;
+  try {
+    body = (await request.json()) as SearchBody;
+  } catch {
+    return NextResponse.json({ detail: "Request body must be valid JSON." }, { status: 400 });
+  }
   const query = {
     prompt: body.prompt?.trim() ?? "",
     os: body.os ?? "Any OS",
@@ -59,11 +64,11 @@ export async function POST(request: Request) {
 
   if (!query.prompt) return NextResponse.json({ detail: "A search prompt is required." }, { status: 400 });
 
-  const results = catalog
+  const matches = catalog
     .map((game) => ({ ...game, match_score: score(game, query.prompt) }))
     .filter((game) => game.match_score > 0 && compatible(game, query))
-    .sort((left, right) => right.positive_reviews - left.positive_reviews || right.estimated_owners - left.estimated_owners || right.match_score - left.match_score)
-    .slice(0, Math.min(Math.max(body.limit ?? 12, 1), 50));
+    .sort((left, right) => right.positive_reviews - left.positive_reviews || right.estimated_owners - left.estimated_owners || right.match_score - left.match_score);
+  const results = matches.slice(0, Math.min(Math.max(body.limit ?? 12, 1), 50));
 
-  return NextResponse.json({ results, total: results.length, search_mode: "Keyword recommendation search" });
+  return NextResponse.json({ results, total: matches.length, search_mode: "Keyword recommendation search" });
 }
