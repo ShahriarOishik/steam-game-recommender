@@ -70,10 +70,11 @@ async function candidateIds(prompt: string) {
 async function loadGame(appId: number, queryVector: Float32Array): Promise<Game | null> {
   const [detailsResponse, steamSpy] = await Promise.all([getJson<Record<string, { success: boolean; data?: SteamDetails }>>(`https://store.steampowered.com/api/appdetails?appids=${appId}&cc=us&l=en`), getJson<SteamSpy>(`https://steamspy.com/api.php?request=appdetails&appid=${appId}`)]);
   const details = detailsResponse?.[String(appId)]?.data;
-  if (!details || details.type !== "game" || !details.name || Number(details.required_age) >= 18) return null;
+  if (!details || details.type !== "game" || !details.name) return null;
+  const description = cleanText(details.detailed_description || details.short_description).slice(0, 1400);
+  if (Number(details.required_age) >= 18 || /\b(adult|adults only|hardcore|porn|hentai|erotic|nsfw|sexual content)\b/i.test(`${details.name} ${description}`)) return null;
   const requirementsText = cleanText(details.pc_requirements?.minimum);
   const genres = [...(details.genres ?? []).map((genre) => genre.description), ...(details.categories ?? []).map((category) => category.description), ...Object.keys(steamSpy?.tags ?? {}).slice(0, 12)].filter((value, index, values) => values.indexOf(value) === index);
-  const description = cleanText(details.detailed_description || details.short_description).slice(0, 1400);
   const os = [details.platforms?.windows && "Windows", details.platforms?.mac && "macOS", details.platforms?.linux && "Linux"].filter(Boolean).join(" ") || "Windows";
   const owners = Number((steamSpy?.owners ?? "0").split("..")[0].replace(/[^0-9]/g, ""));
   return { app_id: appId, title: details.name, genres, positive_reviews: steamSpy?.positive || details.recommendations?.total || 0, estimated_owners: Number.isFinite(owners) ? owners : 0, free_to_play: Boolean(details.is_free), steam_url: `https://store.steampowered.com/app/${appId}/`, description, header_image: details.header_image ?? "", requirements: { os, ram_gb: requirementNumber(requirementsText, "memory", 8), cpu_tier: hardwareTier(requirementsText, "cpu"), gpu_tier: hardwareTier(requirementsText, "gpu"), storage_gb: requirementNumber(requirementsText, "storage", 30) }, match_score: cosineSimilarity(queryVector, embedding(`${details.name} ${description} ${genres.join(" ")}`)) };
