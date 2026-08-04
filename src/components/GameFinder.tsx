@@ -26,7 +26,10 @@ export function GameFinder() {
     try {
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
       const response = await fetch(`${apiBaseUrl}/api/search`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt, ...filters, limit: 12 }) });
-      if (!response.ok) throw new Error("The recommendation service is unavailable.");
+      if (!response.ok) {
+        const failure = await response.json().catch(() => null) as { detail?: string } | null;
+        throw new Error(failure?.detail ?? "The recommendation service is unavailable.");
+      }
       const data: SearchResponse = await response.json(); setResults(data.results); setTotal(data.total); setMode(data.search_mode);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Search failed."); } finally { setLoading(false); }
   }
