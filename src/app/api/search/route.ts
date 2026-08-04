@@ -60,7 +60,8 @@ async function getJson<T>(url: string): Promise<T | null> {
 
 async function candidateIds(prompt: string) {
   if (prompt.trim()) {
-    const search = await getJson<{ items?: SteamSearchItem[] }>(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(prompt)}&cc=us&l=en`);
+    const searchTerms = normalizedWords(prompt).join(" ") || prompt.trim();
+    const search = await getJson<{ items?: SteamSearchItem[] }>(`https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(searchTerms)}&cc=us&l=en`);
     return (search?.items ?? []).filter((item) => item.type === "app").slice(0, 18).map((item) => item.id);
   }
   const featured = await getJson<{ top_sellers?: { items?: SteamSearchItem[] }; specials?: { items?: SteamSearchItem[] }; new_releases?: { items?: SteamSearchItem[] } }>("https://store.steampowered.com/api/featuredcategories?cc=us&l=en");
