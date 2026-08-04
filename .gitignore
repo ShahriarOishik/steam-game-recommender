@@ -44,3 +44,5 @@ next-env.d.ts
 backend/.venv/
 backend/**/__pycache__/
 backend/data/artifacts/
+
+.vercel
