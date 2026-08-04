@@ -41,13 +41,12 @@ The script downloads Kaggle dataset `deepann/80000-steam-games-dataset`, enriche
 
 Copy `.env.example` for the browser API URL and `backend/.env.example` for backend CORS/data location. No secrets are committed.
 
-## Deploy
+## Deploy on Vercel
 
-The repository includes `render.yaml` for the FastAPI service and `vercel.json` for the Next.js frontend.
+The website includes a Vercel-native `/api/search` route, so it can run without a separate backend host or payment method.
 
-1. Create a Render Blueprint from the GitHub repository. Render discovers `render.yaml`, builds `backend/requirements.txt`, and exposes `/health`.
-2. Copy the resulting Render URL, such as `https://spec-scout-api.onrender.com`.
-3. Import the repository into Vercel. Set `NEXT_PUBLIC_API_URL` to the Render URL for Production, Preview, and Development, then deploy.
-4. On Render, change `CORS_ORIGINS` from `*` to the deployed Vercel URL after it is known, for example `https://spec-scout.vercel.app`.
+1. Import the GitHub repository into Vercel or run `vercel --prod` from the project root.
+2. No environment variables are required for the all-Vercel deployment.
+3. The Python/FastAPI backend remains in `backend/` for local work and optional FAISS experiments.
 
-The Render runtime intentionally installs only the small API dependency set. The local refresh command installs the heavier transformer/FAISS tools when you want to generate production retrieval artifacts.
+The Vercel route uses the lightweight catalog and keyword matching. The Python backend and local refresh command support the heavier transformer/FAISS workflow when you need it.
