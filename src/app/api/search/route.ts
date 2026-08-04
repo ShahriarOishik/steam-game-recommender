@@ -62,11 +62,9 @@ export async function POST(request: Request) {
     price: body.price ?? "Any price",
   };
 
-  if (!query.prompt) return NextResponse.json({ detail: "A search prompt is required." }, { status: 400 });
-
   const matches = catalog
     .map((game) => ({ ...game, match_score: score(game, query.prompt) }))
-    .filter((game) => game.match_score > 0 && compatible(game, query))
+    .filter((game) => (query.prompt ? game.match_score > 0 : true) && compatible(game, query))
     .sort((left, right) => right.positive_reviews - left.positive_reviews || right.estimated_owners - left.estimated_owners || right.match_score - left.match_score);
   const results = matches.slice(0, Math.min(Math.max(body.limit ?? 12, 1), 50));
 
